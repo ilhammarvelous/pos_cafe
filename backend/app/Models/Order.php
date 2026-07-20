@@ -49,6 +49,6 @@ class Order extends Model
 
     public function pagerNumber()
     {
-        return $this->hasOne(PageNumber::class, 'current_order_id');
+        return $this->hasOne(PagerNumber::class, 'current_order_id');
     }
 }

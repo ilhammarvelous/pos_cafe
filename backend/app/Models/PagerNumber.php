@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
-class PageNumber extends Model
+class PagerNumber extends Model
 {
     use HasFactory, HasUuids;
 

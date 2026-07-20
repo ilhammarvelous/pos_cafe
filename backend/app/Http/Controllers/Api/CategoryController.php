@@ -4,26 +4,15 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
-use App\Models\Product;
+use App\Models\Category;
 use Illuminate\Http\Request;
 
-class ProductController extends Controller
+class CategoryController extends Controller
 {
-        public function index(Request $request)
+    public function index(Request $request)
     {
         try {
-            // Query products
-            $query = Product::with('category');
-
-            // Filter by category_id
-            if ($request->has('category_id')) {
-                $query->where('category_id', $request->category_id);
-            }
-
-            // Filter by availability
-            if ($request->has('is_available')) {
-                $query->where('is_available', $request->boolean('is_available'));
-            }
+            $query = Category::with('products');
 
             // Search by name
             if ($request->has('search')) {
@@ -31,80 +20,79 @@ class ProductController extends Controller
             }
 
             // Pagination
-            $perPage = $request->get('per_page', 15);
-            $products = $query->paginate($perPage);
+            $perPage = $request->get('per_page', 50);
+            $categories = $query->orderBy('created_at', 'desc')->paginate($perPage);
 
             return response()->json([
                 'success' => true,
-                'data' => $products->items(),
+                'data' => $categories->items(),
                 'meta' => [
-                    'total' => $products->total(),
-                    'per_page' => $products->perPage(),
-                    'current_page' => $products->currentPage(),
-                    'last_page' => $products->lastPage(),
+                    'total' => $categories->total(),
+                    'per_page' => $categories->perPage(),
+                    'current_page' => $categories->currentPage(),
+                    'last_page' => $categories->lastPage(),
                 ],
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to fetch products: ' . $e->getMessage(),
+                'message' => 'Failed to fetch categories: ' . $e->getMessage(),
             ], 500);
         }
     }
 
+    /**
+     * Get single category with products
+     * GET /api/v1/categories/{id}
+     */
     public function show($id)
     {
         try {
-            $product = Product::with('category')->find($id);
+            $category = Category::with('products')->find($id);
 
-            if (!$product) {
+            if (!$category) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Product not found',
+                    'message' => 'Kategori tidak ditemukan',
                 ], 404);
             }
 
             return response()->json([
                 'success' => true,
-                'data' => $product,
+                'data' => $category,
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to fetch product: ' . $e->getMessage(),
+                'message' => 'Failed to fetch category: ' . $e->getMessage(),
             ], 500);
         }
     }
 
+    /**
+     * Create category (Manager only)
+     * POST /api/v1/categories
+     */
     public function store(Request $request)
     {
         try {
-            // Validate input
             $validated = $request->validate([
-                'name' => 'required|string|max:255',
-                'description' => 'nullable|string',
-                'price' => 'required|numeric|min:0',
-                'category_id' => 'required|exists:categories,id',
-                'image_url' => 'nullable|string',
-                'is_available' => 'boolean',
-                'stock_quantity' => 'required|integer|min:0',
+                'name' => 'required|string|max:255|unique:categories,name',
             ]);
 
-            // Create product
-            $product = Product::create($validated);
+            $category = Category::create($validated);
 
-            // Audit log
             AuditLog::create([
                 'user_id' => auth('api')->user()->id,
-                'action' => 'Membuat Produk',
-                'details' => ['product_id' => $product->id, 'name' => $product->name],
+                'action' => 'Membuat Category',
+                'details' => ['category_id' => $category->id, 'name' => $category->name],
                 'ip_address' => $request->ip(),
             ]);
 
             return response()->json([
                 'success' => true,
-                'message' => 'Product created successfully',
-                'data' => $product->load('category'),
+                'message' => 'Berhasil Membuat Kategori',
+                'data' => $category,
             ], 201);
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
@@ -115,46 +103,43 @@ class ProductController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to create product: ' . $e->getMessage(),
+                'message' => 'Failed to create category: ' . $e->getMessage(),
             ], 500);
         }
     }
 
+    /**
+     * Update category (Manager only)
+     * PUT /api/v1/categories/{id}
+     */
     public function update(Request $request, $id)
     {
         try {
-            $product = Product::find($id);
+            $category = Category::find($id);
 
-            if (!$product) {
+            if (!$category) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Product not found',
+                    'message' => 'Kategori produk tidak ditemukan',
                 ], 404);
             }
 
-            // Validate input
             $validated = $request->validate([
-                'name' => 'string|max:255',
-                'description' => 'nullable|string',
-                'price' => 'numeric|min:0',
-                'category_id' => 'exists:categories,id',
-                'image_url' => 'nullable|string',
-                'is_available' => 'boolean',
-                'stock_quantity' => 'integer|min:0',
+                'name' => 'required|string|max:255|unique:categories,name,' . $id,
             ]);
 
             // Store old values for audit
-            $oldValues = $product->only(array_keys($validated));
+            $oldValues = $category->only(array_keys($validated));
 
-            // Update product
-            $product->update($validated);
+            // Update category
+            $category->update($validated);
 
             // Audit log
             AuditLog::create([
                 'user_id' => auth('api')->user()->id,
-                'action' => 'Memperbarui Produk',
+                'action' => 'Memperbarui kategori',
                 'details' => [
-                    'product_id' => $product->id,
+                    'category_id' => $category->id,
                     'old_values' => $oldValues,
                     'new_values' => $validated,
                 ],
@@ -163,8 +148,8 @@ class ProductController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Product updated successfully',
-                'data' => $product->load('category'),
+                'message' => 'Berhasil Memperbarui Kategori',
+                'data' => $category,
             ], 200);
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
@@ -175,42 +160,54 @@ class ProductController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to update product: ' . $e->getMessage(),
+                'message' => 'Failed to update category: ' . $e->getMessage(),
             ], 500);
         }
     }
 
+    /**
+     * Delete category (Manager only)
+     * DELETE /api/v1/categories/{id}
+     */
     public function destroy(Request $request, $id)
     {
         try {
-            $product = Product::find($id);
+            $category = Category::find($id);
 
-            if (!$product) {
+            if (!$category) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Product not found',
+                    'message' => 'Kategori tidak ditemukan',
                 ], 404);
+            }
+
+            // Check if category has products
+            if ($category->products()->count() > 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Tidak dapat menghapus kategori yang memiliki produk',
+                ], 422);
             }
 
             // Audit log
             AuditLog::create([
                 'user_id' => auth('api')->user()->id,
-                'action' => 'Menghapus Produk',
-                'details' => ['product_id' => $product->id, 'name' => $product->name],
+                'action' => 'Menghapus Category',
+                'details' => ['category_id' => $category->id, 'name' => $category->name],
                 'ip_address' => $request->ip(),
             ]);
 
             // Delete
-            $product->delete();
+            $category->delete();
 
             return response()->json([
                 'success' => true,
-                'message' => 'Product deleted successfully',
+                'message' => 'Berhasil Menghapus Kategori',
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to delete product: ' . $e->getMessage(),
+                'message' => 'Failed to delete category: ' . $e->getMessage(),
             ], 500);
         }
     }

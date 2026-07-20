@@ -25,7 +25,6 @@ class User extends Authenticatable implements JwtSubject
         'password',
         'role',
         'status',
-        'last_activity_at',
     ];
 
     protected $hidden = [
@@ -35,7 +34,6 @@ class User extends Authenticatable implements JwtSubject
     protected $casts = [
         'role' => 'string',
         'status' => 'string',
-        'last_activity_at' => 'datetime',
         'created_at' => 'datetime',
     ];
 
