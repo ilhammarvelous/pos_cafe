@@ -79,16 +79,6 @@ class OrderController extends Controller
         }
     }
 
-    /**
-     * Create order (Kasir)
-     * POST /api/v1/orders
-     * Body: {
-     *   "table_number": 1,
-     *   "items": [
-     *     {"product_id": "uuid", "quantity": 2, "notes": "no sugar"}
-     *   ]
-     * }
-     */
     public function store(Request $request)
     {
         try {
@@ -202,8 +192,19 @@ class OrderController extends Controller
             if (!$order) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Order not found',
+                    'message' => 'Pesanan tidak ditemukan',
                 ], 404);
+            }
+
+            // PRE-PAYMENT CONSTRAINT: Check if order is paid
+            if ($order->payment_status !== 'PAID') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Order belum dibayar. Status tidak bisa diubah sampai customer bayar.',
+                    'order_number' => $order->order_number,
+                    'payment_status' => $order->payment_status,
+                    'total_amount' => $order->total_amount,
+                ], 422);
             }
 
             // Validate status

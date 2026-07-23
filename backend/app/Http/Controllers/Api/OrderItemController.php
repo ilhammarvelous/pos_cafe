@@ -59,6 +59,17 @@ class OrderItemController extends Controller
                 ], 404);
             }
 
+            // PRE-PAYMENT CONSTRAINT: Check if order is paid
+            if ($order->payment_status !== 'PAID') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Order belum dibayar. Barista tidak bisa prepare sampai customer bayar.',
+                    'order_number' => $order->order_number,
+                    'payment_status' => $order->payment_status,
+                    'total_amount' => $order->total_amount,
+                ], 422);
+            }
+
             $item = OrderItem::where('id', $itemId)
                 ->where('order_id', $orderId)
                 ->first();

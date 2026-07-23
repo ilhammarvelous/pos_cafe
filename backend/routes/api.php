@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ActivityController;
 use App\Http\Controllers\Api\CategoryController;
+use App\Http\Controllers\Api\MidtransWebhookController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\OrderItemController;
 use App\Http\Controllers\Api\PageNumberController;
@@ -66,6 +67,7 @@ Route::prefix('v1')->group(function () {
 
         // Process Payment (kasir Only)
         Route::post('/orders/{orderId}/payments', [PaymentController::class, 'store'])->middleware('role:kasir');
+        Route::post('/payments/midtrans-callback', [MidtransWebhookController::class, 'handleCallback']);
 
          // Pager Endpoints
         Route::get('/pagers', [PageNumberController::class, 'index']);
@@ -85,6 +87,8 @@ Route::prefix('v1')->group(function () {
 
         // Pager Acknowledge (Public - any authenticated user)
         Route::post('/pagers/{id}/acknowledge', [PageNumberController::class, 'acknowledge']);
+
+        // --- Midtrans Webhook (PUBLIC - No Auth Required) ---
 
          // --- User Management (Manager Only) ---
         Route::middleware('role:manager')->group(function () {
